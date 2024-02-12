@@ -7,20 +7,50 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn build(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("Not enough arguments");
-        }
+    // pub fn build(args: &[String]) -> Result<Config, &'static str> {
+    //     if args.len() < 3 {
+    //         return Err("Not enough arguments");
+    //     }
 
-        let query = args[1].clone();
-        let file_path = args[2].clone();
+    //     let query = args[1].clone();
+    //     let file_path = args[2].clone();
 
-        let ignore_case = env::var("IGNORE_CASE").is_ok(); 
-        // IGNORE_CASE=1 cargo run -- to poem.txt 
-        // $Env:IGNORE_CASE=1; cargo run -- to poem.txt  (Powershell) 
+    //     let ignore_case = env::var("IGNORE_CASE").is_ok();
+    //     // IGNORE_CASE=1 cargo run -- to poem.txt
+    //     // $Env:IGNORE_CASE=1; cargo run -- to poem.txt  (Powershell)
+    //     // Remove-Item Env:IGNORE_CASE (Powershell)
+
+    //     Ok(Config {
+    //         query,
+    //         file_path,
+    //         ignore_case,
+    //     })
+    // }
+
+    // args can be any type that implements the Iterator type and returns String items.
+    // mut because we’re taking ownership of args and we’ll be mutating args by iterating over it
+    pub fn build(mut args: impl Iterator<Item = String>) -> Result<Config, &'static str> {
+        args.next();
+
+        let query = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a query string"),
+        };
+        let file_path = match args.next() {
+            Some(arg) => arg,
+            None => return Err("Didn't get a file path"),
+        };
+
+        let ignore_case = env::var("IGNORE_CASE").is_ok();
+        // IGNORE_CASE=1 cargo run -- to poem.txt
+        // $Env:IGNORE_CASE=1; cargo run -- to poem.txt  (Powershell)
         // Remove-Item Env:IGNORE_CASE (Powershell)
 
-        Ok(Config { query, file_path, ignore_case })
+        Ok(Config {
+            query,
+            file_path,
+            ignore_case,
+        })
     }
 }
 
@@ -43,16 +73,23 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
 
 // the lifetime parameters specify which argument lifetime is connected to the lifetime of the return value.
 // In this case, we indicate that the returned vector should contain string slices that reference slices of the argument contents (rather than the argument query).
-pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
-    let mut results = Vec::new();
+// pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+//     let mut results = Vec::new();
 
-    for line in contents.lines() {
-        if line.contains(query) {
-            results.push(line);
-        }
-    }
-    
-    results
+//     for line in contents.lines() {
+//         if line.contains(query) {
+//             results.push(line);
+//         }
+//     }
+
+//     results
+// }
+
+pub fn search<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
+    contents
+        .lines()
+        .filter(|line| line.contains(query))
+        .collect()
 }
 
 pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a str> {
@@ -64,7 +101,7 @@ pub fn search_case_insensitive<'a>(query: &str, contents: &'a str) -> Vec<&'a st
             results.push(line);
         }
     }
-    
+
     results
 }
 
@@ -93,7 +130,9 @@ Rust:
 safe, fast, productive.
 Pick three.
 Trust me.";
-        assert_eq!(vec!["Rust:", "Trust me."], search_case_insensitive(query, contents));
+        assert_eq!(
+            vec!["Rust:", "Trust me."],
+            search_case_insensitive(query, contents)
+        );
     }
 }
-
